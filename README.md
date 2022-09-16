@@ -1,2 +1,4 @@
 # HappyCNT
-Do happy Wannier of CNT and postprocessing
+Do happy Wannierization and postprocessing of Carbon NanoTube (CNT)
+powered by Ting BAO and Benshu FAN
+
