@@ -11,6 +11,13 @@ Description: This python code is designed for construction the Hamiltonian
                 - wannier band.png
 '''
 
+'''
+modified by Ting BAO, for:
+* Sign-dependent Size of mag flux
+* Slightly change the file IO code
+'''
+
+
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -76,7 +83,7 @@ class WannierBand():
         '''
 
     def matrix_element(self):
-        hplank = 6.62607015 * 10 ** (-34)
+        hplank = 6.62607015 * 10 ** (-34) # Planck constant
         e = 1.6 * 10 ** (-19)
         self.B = np.array(np.linspace(0, 2 * 10 ** (-15), 100)) / (hplank / e)
         h = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan), dtype=np.complex64)
@@ -103,8 +110,7 @@ class WannierBand():
                     wan_centre[..., i, j, :] = (R1 - R2)
                     R1[-1] = 0
                     R2[-1] = 0
-                    S[:, i, j] = np.linalg.norm(np.cross(R1, R2)) / 2
-            fw.close()
+                    S[:, i, j] = np.linalg.norm(np.cross(R1, R2)) / 2 #
         if self.nrpts % 15 == 0:
             x = self.nrpts // 15 + 3
         else:
@@ -164,7 +170,7 @@ def main():
         num_wan = int(lines[1].strip().split()[0])
         # 获取the number of Wigner-Seitz grid-points
         nrpts = int(lines[2].strip().split()[0])
-        fw.close()
+    
     # 根据POSCAR，获取实空间基矢
     with open("POSCAR", "r") as fp:
         lines_p = fp.readlines()
@@ -174,7 +180,7 @@ def main():
         for i in range(2, 5):
             lv.append((np.array(list(map(float, lines_p[i].strip().split()))) * float(
                 lines_p[1].strip().split()[0])).tolist())
-        fp.close()
+
     # 根据KPOINTS，获取能带在K空间高对称点所取路径
     with open("KPOINTS", "r") as fk:
         K_point_path = []
@@ -186,7 +192,7 @@ def main():
                 continue
             else:
                 K_list.append(lines_k[i].strip().split())
-        fk.close()
+
     for i in range(4, len(K_list), 2):
         if i != len(K_list) - 2:
             K_point_path.append(list(map(float, K_list[i][0:-1])))
