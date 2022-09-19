@@ -85,7 +85,7 @@ class WannierBand():
     def matrix_element(self):
         hplank = 6.62607015 * 10 ** (-34) # Planck constant
         e = 1.6 * 10 ** (-19)
-        self.B = np.array(np.linspace(0, 2 * 10 ** (-15), 100)) / (hplank / e)
+        self.B = np.array(np.linspace(0, 5 * 10 ** (-15), 100)) / (hplank / e)  # 磁场强度
         h = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan), dtype=np.complex64)
         R = np.zeros((self.n * self.kn, self.nrpts, 1, 1, 3), dtype=np.float16)
         Degen = np.zeros((self.n * self.kn, self.nrpts, 1, 1), dtype=np.uint8)
@@ -112,7 +112,7 @@ class WannierBand():
                     R2[-1] = 0
                     temp_S = np.cross(R1, R2)
                     sgn=np.sign(temp_S[-1])
-                    S[:, i, j] = sign * np.linalg.norm(temp_S) / 2# adjust for the sign problem
+                    S[:, i, j] = sgn * np.linalg.norm(temp_S) / 2# adjust for the sign problem
         if self.nrpts % 15 == 0:
             x = self.nrpts // 15 + 3
         else:
@@ -150,7 +150,8 @@ class WannierBand():
         # ax.set_xticks(xticks)
         # ax.set_xticklabels(self.K_label)
         ax.set_title('Wannier band of {}'.format(self.name))
-        # ax.set_xlabel("Wave vector  "r"$\vec{k}$")
+        ax.set_xlabel("mag flux  "r"$\vec{\phi}$")
+        #ax.set_xlabel("Wave vector  "r"$\vec{k}$")
         ax.set_ylabel(r"$E - E_{fermi}$"' (eV)')
         # plt.xlim([0, self.k_length[self.n * self.kn - 1]])
         plt.ylim([self.ymin, self.ymax])
@@ -159,7 +160,7 @@ class WannierBand():
         #
         # plt.plot([0, self.k_length[self.n * self.kn - 1]], [0, 0], color='black', linestyle='--')
         # plt.grid(axis='x', c='r', linestyle='--')
-        # plt.savefig('wannier band of {}'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.0)  # bbox…去掉图外边框
+        plt.savefig('wannier band of {}'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.0)  # bbox…去掉图外边框
         plt.show()
 
 
@@ -216,7 +217,8 @@ def main():
     E_fermi = -2.423869
     ymin = -5
     ymax = 5
-    kernel = WannierBand(lines, num_wan, nrpts, n, name, lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
+    #kernel = WannierBand(lines, num_wan, nrpts, n, name, lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
+    kernel = WannierBand(lines, num_wan, nrpts, n, '3-3', lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
     kernel.reciprocal()
     kernel.k_path()
     kernel.length()
