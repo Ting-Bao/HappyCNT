@@ -85,7 +85,7 @@ class WannierBand():
     def matrix_element(self):
         hplank = 6.62607015 * 10 ** (-34) # Planck constant
         e = 1.6 * 10 ** (-19)
-        self.B = np.array(np.linspace(0, 3 * 10 ** (-15), 100)) / (hplank / e)  # 磁场强度
+        self.B = np.array(np.linspace(0, 5 * 10 ** (-15), 100)) / (hplank / e)  # 磁场强度
         h = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan), dtype=np.complex64)
         R = np.zeros((self.n * self.kn, self.nrpts, 1, 1, 3), dtype=np.float16)
         Degen = np.zeros((self.n * self.kn, self.nrpts, 1, 1), dtype=np.uint8)
