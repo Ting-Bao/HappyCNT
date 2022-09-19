@@ -11,13 +11,6 @@ Description: This python code is designed for construction the Hamiltonian
                 - wannier band.png
 '''
 
-'''
-modified by Ting BAO, for:
-* Sign-dependent Size of mag flux
-* Slightly change the file IO code
-'''
-
-
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -83,16 +76,11 @@ class WannierBand():
         '''
 
     def matrix_element(self):
-        hplank = 6.62607015 * 10 ** (-34) # Planck constant
-        e = 1.6 * 10 ** (-19)
-        self.B = np.array(np.linspace(0, 5 * 10 ** (-15), 100)) / (hplank / e)  # 磁场强度
         h = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan), dtype=np.complex64)
         R = np.zeros((self.n * self.kn, self.nrpts, 1, 1, 3), dtype=np.float16)
         Degen = np.zeros((self.n * self.kn, self.nrpts, 1, 1), dtype=np.uint8)
         wan_centre = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan, 3), dtype=np.float16)
-        S = np.zeros((len(self.B), self.num_wan, self.num_wan), dtype=np.float16)
         # 读取the degeneracy of each Wigner-Seitz grid point
-        print(self.nrpts)
         for ir in range(3, 4 + (self.nrpts - 1) // 15):
             if ir != 3 + (self.nrpts - 1) // 15:
                 for jr in range(15):
@@ -105,14 +93,10 @@ class WannierBand():
             lines = fw.readlines()
             for i in range(self.num_wan):
                 for j in range(self.num_wan):
-                    R1 = np.array(list(map(float, lines[i + 2].strip().split()[1:4])))
-                    R2 = np.array(list(map(float, lines[j + 2].strip().split()[1:4])))
-                    wan_centre[..., i, j, :] = (R1 - R2)
-                    R1[-1] = 0
-                    R2[-1] = 0
-                    temp_S = np.cross(R1, R2)
-                    sgn=np.sign(temp_S[-1])
-                    S[:, i, j] = sgn * np.linalg.norm(temp_S) / 2# adjust for the sign problem
+                    wan_centre[..., i, j, :] = np.array(
+                        list(map(float, lines[i + 2].strip().split()[1:4]))) - np.array(
+                        list(map(float, lines[j + 2].strip().split()[1:4])))
+            fw.close()
         if self.nrpts % 15 == 0:
             x = self.nrpts // 15 + 3
         else:
@@ -125,11 +109,9 @@ class WannierBand():
             R[:, m, ...] = float(self.lines[x + m * (self.num_wan ** 2)].split()[0]) * np.array(self.lv[0]) + float(
                 self.lines[x + m * (self.num_wan ** 2)].split()[1]) * np.array(self.lv[1]) + float(
                 self.lines[x + m * (self.num_wan ** 2)].split()[2]) * np.array(self.lv[2])
-        H = (np.exp(1j * (R[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
-            1j * (wan_centre[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
-            1j * S[:, None, None, ...] * self.B[:, None, None, None, None])) * h[None, -1, ...]) / Degen[
-                 None, -1, ...]).sum(axis=2)
-        H = H.sum(axis=1)
+        H = (np.exp(1j * (R * self.k[:, None, None, None, :]).sum(axis=-1)) * (np.exp(
+            1j * (wan_centre * self.k[:, None, None, None, :]).sum(axis=-1)) * h) / Degen).sum(
+            axis=1)
         self.H = H
 
     def plot(self):
@@ -138,29 +120,28 @@ class WannierBand():
         dim = self.eigenvalue_k.shape[-1]
         fig, ax = plt.subplots()
         for dim0 in range(dim):
-            plt.plot(self.B[0:len(self.B)], self.eigenvalue_k[:, dim0])
+            plt.plot(self.k_length[0:self.n * self.kn], self.eigenvalue_k[:, dim0])
 
         # 注意最后一个坐标位置
-        # xticks = []
-        # for i in range(self.n + 1):
-        #     if i != self.n:
-        #         xticks.append(self.k_length[i * self.kn])
-        #     else:
-        #         xticks.append(self.k_length[i * self.kn - 1])
-        # ax.set_xticks(xticks)
-        # ax.set_xticklabels(self.K_label)
+        xticks = []
+        for i in range(self.n + 1):
+            if i != self.n:
+                xticks.append(self.k_length[i * self.kn])
+            else:
+                xticks.append(self.k_length[i * self.kn - 1])
+        ax.set_xticks(xticks)
+        ax.set_xticklabels(self.K_label)
         ax.set_title('Wannier band of {}'.format(self.name))
-        ax.set_xlabel("mag flux  "r"$\vec{\phi}$")
-        #ax.set_xlabel("Wave vector  "r"$\vec{k}$")
+        ax.set_xlabel("Wave vector  "r"$\vec{k}$")
         ax.set_ylabel(r"$E - E_{fermi}$"' (eV)')
-        # plt.xlim([0, self.k_length[self.n * self.kn - 1]])
+        plt.xlim([0, self.k_length[self.n * self.kn - 1]])
         plt.ylim([self.ymin, self.ymax])
-        # # y_major_locator = MultipleLocator(1.25)  # 把y轴的刻度间隔设置为10，并存在变量里
-        # # ax.yaxis.set_major_locator(y_major_locator)  # 把y轴的主刻度设置为10的倍数
-        #
-        # plt.plot([0, self.k_length[self.n * self.kn - 1]], [0, 0], color='black', linestyle='--')
-        # plt.grid(axis='x', c='r', linestyle='--')
-        plt.savefig('wannier band of {}'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.0)  # bbox…去掉图外边框
+        # y_major_locator = MultipleLocator(1.25)  # 把y轴的刻度间隔设置为10，并存在变量里
+        # ax.yaxis.set_major_locator(y_major_locator)  # 把y轴的主刻度设置为10的倍数
+
+        plt.plot([0, self.k_length[self.n * self.kn - 1]], [0, 0], color='black', linestyle='--')
+        plt.grid(axis='x', c='r', linestyle='--')
+        plt.savefig('wannier band of {}.jpg'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.0)  # bbox…去掉图外边框
         plt.show()
 
 
@@ -173,7 +154,7 @@ def main():
         num_wan = int(lines[1].strip().split()[0])
         # 获取the number of Wigner-Seitz grid-points
         nrpts = int(lines[2].strip().split()[0])
-    
+        fw.close()
     # 根据POSCAR，获取实空间基矢
     with open("POSCAR", "r") as fp:
         lines_p = fp.readlines()
@@ -183,7 +164,7 @@ def main():
         for i in range(2, 5):
             lv.append((np.array(list(map(float, lines_p[i].strip().split()))) * float(
                 lines_p[1].strip().split()[0])).tolist())
-
+        fp.close()
     # 根据KPOINTS，获取能带在K空间高对称点所取路径
     with open("KPOINTS", "r") as fk:
         K_point_path = []
@@ -195,7 +176,7 @@ def main():
                 continue
             else:
                 K_list.append(lines_k[i].strip().split())
-
+        fk.close()
     for i in range(4, len(K_list), 2):
         if i != len(K_list) - 2:
             K_point_path.append(list(map(float, K_list[i][0:-1])))
@@ -214,17 +195,17 @@ def main():
     # 每个高对称线撒点个数
     kn = 100
     # 从自洽步获取费米能，grep fermi OUTCAR
-    E_fermi = -2.42386934
+    E_fermi = -3.97520335
     ymin = -5
     ymax = 5
-    #kernel = WannierBand(lines, num_wan, nrpts, n, name, lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
-    kernel = WannierBand(lines, num_wan, nrpts, n, '3-3', lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
+    kernel = WannierBand(lines, num_wan, nrpts, n, '4-0', lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
     kernel.reciprocal()
     kernel.k_path()
     kernel.length()
     kernel.matrix_element()
     print('time:', time.time() - begin)
     kernel.plot()
+
 
 if __name__ == '__main__':  # 如果是当前文件直接运行，执行main()函数中的内容；如果是import当前文件，则不执行。
     main()

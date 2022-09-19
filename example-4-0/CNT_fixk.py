@@ -85,7 +85,7 @@ class WannierBand():
     def matrix_element(self):
         hplank = 6.62607015 * 10 ** (-34) # Planck constant
         e = 1.6 * 10 ** (-19)
-        self.B = np.array(np.linspace(0, 5 * 10 ** (-15), 100)) / (hplank / e)  # 磁场强度
+        self.B = np.array(np.linspace(0, 3 * 10 ** (-15), 100)) / (hplank / e)  # 磁场强度
         h = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan), dtype=np.complex64)
         R = np.zeros((self.n * self.kn, self.nrpts, 1, 1, 3), dtype=np.float16)
         Degen = np.zeros((self.n * self.kn, self.nrpts, 1, 1), dtype=np.uint8)
@@ -150,7 +150,7 @@ class WannierBand():
         # ax.set_xticks(xticks)
         # ax.set_xticklabels(self.K_label)
         ax.set_title('Wannier band of {}'.format(self.name))
-        ax.set_xlabel("mag flux  "r"$\vec{\phi}$")
+        ax.set_xlabel("mag B  "r"$B$")
         #ax.set_xlabel("Wave vector  "r"$\vec{k}$")
         ax.set_ylabel(r"$E - E_{fermi}$"' (eV)')
         # plt.xlim([0, self.k_length[self.n * self.kn - 1]])
@@ -214,11 +214,11 @@ def main():
     # 每个高对称线撒点个数
     kn = 100
     # 从自洽步获取费米能，grep fermi OUTCAR
-    E_fermi = -2.42386934
+    E_fermi = -3.97520335
     ymin = -5
     ymax = 5
     #kernel = WannierBand(lines, num_wan, nrpts, n, name, lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
-    kernel = WannierBand(lines, num_wan, nrpts, n, '3-3', lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
+    kernel = WannierBand(lines, num_wan, nrpts, n, '4-0', lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
     kernel.reciprocal()
     kernel.k_path()
     kernel.length()
