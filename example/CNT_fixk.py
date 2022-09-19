@@ -112,7 +112,7 @@ class WannierBand():
                     R2[-1] = 0
                     temp_S = np.cross(R1, R2)
                     sgn=np.sign(temp_S[-1])
-                    S[:, i, j] = sign * np.linalg.norm(temp_S) / 2# adjust for the sign problem
+                    S[:, i, j] = sgn * np.linalg.norm(temp_S) / 2# adjust for the sign problem
         if self.nrpts % 15 == 0:
             x = self.nrpts // 15 + 3
         else:
@@ -159,7 +159,7 @@ class WannierBand():
         #
         # plt.plot([0, self.k_length[self.n * self.kn - 1]], [0, 0], color='black', linestyle='--')
         # plt.grid(axis='x', c='r', linestyle='--')
-        # plt.savefig('wannier band of {}'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.0)  # bbox…去掉图外边框
+        plt.savefig('wannier band of {}'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.0)  # bbox…去掉图外边框
         plt.show()
 
 
