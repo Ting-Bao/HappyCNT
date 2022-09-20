@@ -84,23 +84,23 @@ class WannierBand():
         '''
 
     def matrix_element(self):
-        rhplanck = 1.054571817E-34 # reduced Planck constant
+        hplank = 6.62607015E-34 # Planck constant
         e = 1.6E-19
         
         ###
-        self.B = np.array(np.linspace(0, 15E4, 3000),dtype=np.float64) / (rhplanck / e)  # 磁场强度，单位特斯拉
+        self.B = np.array(np.linspace(0, 5E-14, 3000),dtype=np.float64) / (hplank / e)  # 磁场强度
         ###
         #               k路径撒点数量      实空间矩阵数   wannier基数   wannier基数
         h = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan), dtype=np.complex128)
         R = np.zeros((self.n * self.kn, self.nrpts, 1, 1, 3), dtype=np.float32) 
-        Degen = np.zeros((self.n * self.kn, self.nrpts, 1, 1), dtype=np.int8) # 简并程度
+        Degen = np.zeros((self.n * self.kn, self.nrpts, 1, 1), dtype=np.uint8) # 简并程度
         wan_centre = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan, 3), dtype=np.float32)
         S = np.zeros((len(self.B), self.num_wan, self.num_wan), dtype=np.float32)
         # 读取the degeneracy of each Wigner-Seitz grid point
         print(self.nrpts)
 
         # mod 15 是因为记录wannier90_hr.dat中的第四行开始的记录简并度的行，一行最多有15个数字
-        for ir in range(3, 4 + (self.nrpts - 1) // 15):   # ir 判断了写简并度的行数有几行
+        for ir in range(3, 4 + (self.nrpts - 1) // 15):
             if ir != 3 + (self.nrpts - 1) // 15:
                 for jr in range(15):
                     Degen[:, (ir - 3) * 15 + jr, :] = self.lines[ir].split()[jr]
@@ -115,45 +115,30 @@ class WannierBand():
                 for j in range(self.num_wan):
                     R1 = np.array(list(map(float, lines[i + 2].strip().split()[1:4])))
                     R2 = np.array(list(map(float, lines[j + 2].strip().split()[1:4])))
-                    wan_centre[..., i, j, :] = (R1 - R2) # 把一个三维矢量，赋给了一个三阶张量
-                    #temp=wan_centre[..., i, j, :]
-                    #print(wan_centre.shape)
-                    #print(wan_centre[..., i, j, :].shape)
-                    #print(wan_centre[21,5, 0, 1, :])
+                    wan_centre[..., i, j, :] = (R1 - R2)
                     R1[-1] = 0.0
                     R2[-1] = 0.0
                     temp_S = np.cross(R1, R2)
                     sgn=np.sign(temp_S[-1])
-                    S[:, i, j] = sgn * np.linalg.norm(temp_S)*1E-20 / 2 # use meters as unit, adjust for the sign problem
-                    #print(S[0,i,j])
-                    #print(S[3,i,j])
+                    S[:, i, j] = sgn * np.linalg.norm(temp_S) / 2# adjust for the sign problem
         
-        
-        # x 用于判断wannier90_hr.dat中第几行开始有矩阵元
         if self.nrpts % 15 == 0:
             x = self.nrpts // 15 + 3
         else:
             x = self.nrpts // 15 + 4
-        
-        # h 为实空间的哈密顿量矩阵
         for i in range(x, len(self.lines)):
             h[:, int(np.floor((i - x) / self.num_wan ** 2)), int(self.lines[i].split()[3]) - 1,
             int(self.lines[i].split()[4]) - 1] = \
                 float(self.lines[i].split()[5]) + 1j * float(self.lines[i].split()[6])
-
-        # 每个实空间矩阵的对应的晶格矢量    
         for m in range(self.nrpts):
             R[:, m, ...] = float(self.lines[x + m * (self.num_wan ** 2)].split()[0]) * np.array(self.lv[0]) + float(
                 self.lines[x + m * (self.num_wan ** 2)].split()[1]) * np.array(self.lv[1]) + float(
                 self.lines[x + m * (self.num_wan ** 2)].split()[2]) * np.array(self.lv[2])
-        
         H = (np.exp(1j * (R[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
             1j * (wan_centre[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
             1j * S[:, None, None, ...] * self.B[:, None, None, None, None])) * h[None, -1, ...]) / Degen[
-                 None, -1, ...]).sum(axis=1)
-        print('A',H.shape)
+                 None, -1, ...]).sum(axis=2)
         H = H.sum(axis=1)
-        print(H.shape)
         self.H = H
 
     def plot(self):
