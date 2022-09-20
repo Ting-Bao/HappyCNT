@@ -5,7 +5,7 @@ Description: This python code is designed for construction the Hamiltonian
                 and plot the band structure use the vasp wannier90_hr.dat file.
               ::Input File::
                 - wannier90_hr.dat
-                - KPOINTS
+                - KPOINTS  (used in band calculation)
                 - POSCAR
               ::Output File::
                 - wannier band.png
@@ -26,17 +26,17 @@ from matplotlib.pyplot import MultipleLocator  # 从pyplot导入MultipleLocator�
 
 class WannierBand():
     def __init__(self, lines, num_wan, nrpts, n, name, lv, K_point_path, K_label, kn, E_fermi, ymin, ymax):
-        self.lines = lines
-        self.num_wan = num_wan
-        self.nrpts = nrpts
-        self.n = n
-        self.name = name
-        self.lv = lv
-        self.K_point_path = K_point_path
-        self.K_label = K_label
-        self.kn = kn
-        self.E_fermi = E_fermi
-        self.ymin = ymin
+        self.lines = lines  # wannier90_hr.dat每行
+        self.num_wan = num_wan   # wannier带的数目
+        self.nrpts = nrpts   #实空间截断矩阵的个数
+        self.n = n   # 高对称线的个数（段数），例如G-Z-A算作两段
+        self.name = name  #  绘图时候的名字
+        self.lv = lv  # lattice vector
+        self.K_point_path = K_point_path   #高对称点坐标的列表
+        self.K_label = K_label  #高对称点符号的列表
+        self.kn = kn #每段高对称路径的撒点数量
+        self.E_fermi = E_fermi  # 费米能
+        self.ymin = ymin  # y轴坐标下限
         self.ymax = ymax
 
     # 根据实空间基矢获取倒格矢
@@ -184,7 +184,7 @@ def main():
             lv.append((np.array(list(map(float, lines_p[i].strip().split()))) * float(
                 lines_p[1].strip().split()[0])).tolist())
 
-    # 根据KPOINTS，获取能带在K空间高对称点所取路径
+    # 根据KPOINTS，获取能带在K空间高对称点所取路径 #这是BAND步的KPOINTS
     with open("KPOINTS", "r") as fk:
         K_point_path = []
         K_label = []
