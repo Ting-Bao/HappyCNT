@@ -49,11 +49,12 @@ class WannierBand():
     # 构建K空间能带作图路径
     # 这里K空间路径越长，撒点越多，能带图越真实，注意endpoint=False的使用，避免重复计数与赋值
     def k_path(self):
-        self.k = np.zeros((self.n * self.kn, 3), dtype=np.float16)
+        self.k = np.zeros((self.n * self.kn, 3), dtype=np.float32)
+        # 把高对称K点有相对分数坐标换到K空间绝对坐标
         for i in range(len(self.K_point_path)):
             self.K_point_path[i] = self.K_point_path[i][0] * self.rec[0] + self.K_point_path[i][1] * self.rec[1] + \
                                    self.K_point_path[i][2] * self.rec[2]
-
+        # 在高对称点间均匀撒点画K线，最后一段再包括终点
         for i in range(self.n):
             if i < self.n - 1:
                 self.k[i * self.kn:(i + 1) * self.kn, ...] = np.linspace(self.K_point_path[i], self.K_point_path[i + 1],
@@ -62,14 +63,14 @@ class WannierBand():
                 self.k[i * self.kn:(i + 1) * self.kn, ...] = np.linspace(self.K_point_path[i], self.K_point_path[i + 1],
                                                                          self.kn)
 
-    # 依照K空间路径构建作图步长
+    # 依照K空间路径构建作图步长，“步长”指的是沿着k空间高对称路径走过的长度
     def length(self):
         k_length = [0]
         for i in range(self.n * self.kn - 1):
             if i < (self.n - 1) * self.kn:
                 k_length.append(np.sqrt(
                     ((self.K_point_path[int(i / self.kn) + 1] - self.K_point_path[int(i / self.kn)]) ** 2).sum(
-                        axis=-1)) / self.kn + k_length[i])
+                        axis=-1)) / self.kn + k_length[i]) # 用int来向下取整，comment：此处计算比较重复
             else:
                 k_length.append(np.sqrt(
                     ((self.K_point_path[int(i / self.kn) + 1] - self.K_point_path[int(i / self.kn)]) ** 2).sum(
@@ -83,14 +84,18 @@ class WannierBand():
         '''
 
     def matrix_element(self):
-        hplank = 6.62607015 * 10 ** (-34) # Planck constant
-        e = 1.6 * 10 ** (-19)
-        self.B = np.array(np.linspace(0, 5 * 10 ** (-15), 100)) / (hplank / e)  # 磁场强度
+        hplank = 6.62607015E-34 # Planck constant
+        e = 1.6E-19
+        
+        ###
+        self.B = np.array(np.linspace(0, 5E-15, 3000),dtype=float32) / (hplank / e)  # 磁场强度
+        ###
+
         h = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan), dtype=np.complex64)
-        R = np.zeros((self.n * self.kn, self.nrpts, 1, 1, 3), dtype=np.float16)
+        R = np.zeros((self.n * self.kn, self.nrpts, 1, 1, 3), dtype=np.float32)
         Degen = np.zeros((self.n * self.kn, self.nrpts, 1, 1), dtype=np.uint8)
-        wan_centre = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan, 3), dtype=np.float16)
-        S = np.zeros((len(self.B), self.num_wan, self.num_wan), dtype=np.float16)
+        wan_centre = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan, 3), dtype=np.float32)
+        S = np.zeros((len(self.B), self.num_wan, self.num_wan), dtype=np.float32)
         # 读取the degeneracy of each Wigner-Seitz grid point
         print(self.nrpts)
         for ir in range(3, 4 + (self.nrpts - 1) // 15):
