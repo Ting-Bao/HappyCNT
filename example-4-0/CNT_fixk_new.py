@@ -88,7 +88,7 @@ class WannierBand():
         e = 1.6E-19
         
         ###
-        self.B = np.array(np.linspace(0, 5E-15, 3000),dtype=np.float64) / (hplank / e)  # 磁场强度
+        self.B = np.array(np.linspace(0, 5E-14, 3000),dtype=np.float64) / (hplank / e)  # 磁场强度
         ###
         #               k路径撒点数量      实空间矩阵数   wannier基数   wannier基数
         h = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan), dtype=np.complex128)
@@ -169,7 +169,7 @@ class WannierBand():
         #
         # plt.plot([0, self.k_length[self.n * self.kn - 1]], [0, 0], color='black', linestyle='--')
         # plt.grid(axis='x', c='r', linestyle='--')
-        plt.savefig('wannier band of {}'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.0)  # bbox…去掉图外边框
+        plt.savefig('wannier band of {}'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.3)  # bbox…去掉图外边框
         plt.show()
 
 
