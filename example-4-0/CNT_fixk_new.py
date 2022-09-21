@@ -17,7 +17,7 @@ modified by Ting BAO, for:
 * Slightly change the file IO code
 '''
 
-CNT_r=2.2 # The radius of CNT, unit: Ang
+CNT_r=1.57 # The radius of CNT, unit: Ang
 
 import time
 import numpy as np
@@ -126,7 +126,7 @@ class WannierBand():
                     sgn = np.sign(np.cross(R1, R2)[-1])
 
                     #R_avg = (np.linalg.norm(R1) + np.linalg.norm(R2)) / 2
-                    R_avg=2.2#CNT_r
+                    R_avg=CNT_r
                     theta = np.arccos(round(np.dot(R1, R2) / (np.linalg.norm(R1) * np.linalg.norm(R2)), 8))
                     S[i, j] = 1E-20 * sgn * theta * (R_avg ** 2) / 2 #use meters as unit, adjust for the sign problem
 
