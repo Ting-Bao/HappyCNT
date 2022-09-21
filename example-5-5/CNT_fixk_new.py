@@ -241,11 +241,11 @@ def main():
     # 每个高对称线撒点个数
     kn = 100
     # 从自洽步获取费米能，grep fermi OUTCAR
-    E_fermi = -2.4239
+    E_fermi = -1.91108805
     ymin = -5
     ymax = 5
     #kernel = WannierBand(lines, num_wan, nrpts, n, name, lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
-    kernel = WannierBand(lines, num_wan, nrpts, n, '3-3', lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
+    kernel = WannierBand(lines, num_wan, nrpts, n, '5-5', lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
     kernel.reciprocal()
     kernel.k_path()
     kernel.length()
