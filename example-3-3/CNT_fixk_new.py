@@ -95,7 +95,7 @@ class WannierBand():
         R = np.zeros((self.n * self.kn, self.nrpts, 1, 1, 3), dtype=np.float32) 
         Degen = np.zeros((self.n * self.kn, self.nrpts, 1, 1), dtype=np.int8) # 简并程度
         wan_centre = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan, 3), dtype=np.float32)
-        S = np.zeros((len(self.B), self.num_wan, self.num_wan), dtype=np.float32)
+        S = np.zeros((self.num_wan, self.num_wan), dtype=np.float32)
         # 读取the degeneracy of each Wigner-Seitz grid point
         print(self.nrpts)
 
@@ -124,21 +124,11 @@ class WannierBand():
                     R2[-1] = 0.0
                     sgn = np.sign(np.cross(R1, R2)[-1])
 
-                    R_new = (np.linalg.norm(R1) + np.linalg.norm(R2)) / 2
-                    theta1 = np.arccos(round(np.dot(R1, R2) / (np.linalg.norm(R1) * np.linalg.norm(R2)), 6))
-                    
-                    S[:,i, j] = sgn * theta * (R_new ** 2) / 2
-                    
-                    #print(np.dot(R1,R2)/(np.linalg.norm(R1)*np.linalg.norm(R2)))
-                    theta2 = np.arccos(np.dot(R1,R2)/(np.linalg.norm(R1)*np.linalg.norm(R2)))
-                    print(theta1,theta2)
-                    #temp_S = theta*(((np.linalg.norm(R1)+np.linalg.norm(R2))/2)**2)/2
-                    temp_S = np.linalg.norm(np.cross(R1, R2))
-                    #print(np.linalg.norm(R1),np.linalg.norm(R2))
-                    #print(sgn *temp_S,sgn*np.linalg.norm(np.cross(R1, R2)))
-                    S[:, i, j] =  sgn *temp_S*1e-20 # use meters as unit, adjust for the sign problem
+                    #R_avg = (np.linalg.norm(R1) + np.linalg.norm(R2)) / 2
+                    R_avg=2.2
+                    theta = np.arccos(round(np.dot(R1, R2) / (np.linalg.norm(R1) * np.linalg.norm(R2)), 8))
+                    S[i, j] = 1E-20 * sgn * theta * (R_avg ** 2) / 2 #use meters as unit, adjust for the sign problem
 
-        
         
         # x 用于判断wannier90_hr.dat中第几行开始有矩阵元
         if self.nrpts % 15 == 0:
@@ -160,7 +150,11 @@ class WannierBand():
         
         H = (np.exp(1j * (R[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
             1j * (wan_centre[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
-            1j * S[:, None, None, ...] * self.B[:, None, None, None, None])) * h[None, -1, ...]) / Degen[
+            1j * S[None, None, None, ...] * self.B[:, None, None, None, None])) * h[None, -1, ...]) / Degen[
+                 None, -1, ...]).sum(axis=2)
+        H = (np.exp(1j * (R[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
+            1j * (wan_centre[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
+            1j * S[None, None, None, ...] * self.B[:, None, None, None, None])) * h[None, -1, ...]) / Degen[
                  None, -1, ...]).sum(axis=2)
         H = H.sum(axis=1)
         self.H = H
@@ -183,7 +177,7 @@ class WannierBand():
         # ax.set_xticks(xticks)
         # ax.set_xticklabels(self.K_label)
         ax.set_title('Wannier band of {}'.format(self.name))
-        ax.set_xlabel("mag B  "r"$B$")
+        ax.set_xlabel("mag  "r"$B$")
         #ax.set_xlabel("Wave vector  "r"$\vec{k}$")
         ax.set_ylabel(r"$E - E_{fermi}$"' (eV)')
         # plt.xlim([0, self.k_length[self.n * self.kn - 1]])

@@ -177,7 +177,7 @@ class WannierBand():
         # ax.set_xticks(xticks)
         # ax.set_xticklabels(self.K_label)
         ax.set_title('Wannier band of {}'.format(self.name))
-        ax.set_xlabel("mag  "r"$B$")
+        ax.set_xlabel("mag B  "r"$B$")
         #ax.set_xlabel("Wave vector  "r"$\vec{k}$")
         ax.set_ylabel(r"$E - E_{fermi}$"' (eV)')
         # plt.xlim([0, self.k_length[self.n * self.kn - 1]])
@@ -241,11 +241,11 @@ def main():
     # 每个高对称线撒点个数
     kn = 100
     # 从自洽步获取费米能，grep fermi OUTCAR
-    E_fermi = -3.97520335
+    E_fermi = -2.4239
     ymin = -5
     ymax = 5
     #kernel = WannierBand(lines, num_wan, nrpts, n, name, lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
-    kernel = WannierBand(lines, num_wan, nrpts, n, '4-0', lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
+    kernel = WannierBand(lines, num_wan, nrpts, n, '3-3', lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
     kernel.reciprocal()
     kernel.k_path()
     kernel.length()
