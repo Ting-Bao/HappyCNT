@@ -9,15 +9,15 @@ Generate the projector part of wannier.win file. This is only applicable for CNT
     - p_z orbital on each atom, pointing out from the center 
     - mid-bond s orbit
 + scan_window.py:
-    Read in the config.ini file and generate wannierization input file in batch according to [dis_froz_min] and [dis_froz_max], see example config.ini for details. Also, the feimi energy should be given (can be grepped from VASP Calculation). In the templated path, files following should be provided:
+    Read in the config.ini file and generate wannierization input file in batch according to **[dis_froz_min]** and **[dis_froz_max]**, see example config.ini for details. Also, the feimi energy should be given (can be grepped from VASP Calculation). In the templated path, files following should be provided:
     - a config file gives out the inner step range, see scan_config.ini
     - a template of wannier90.win, with 
-    -  dis_froz_min = CONTENT1
-    -  dis_froz_max = CONTENT2
-    - a template run.sh of wannier90.x
-    - data file from VASP projection: wannier90.{amn,eig,mmn}
-    - wannier plot code from fanbs
-    - BAND.dat, KLABELS
+        +  dis_froz_min = CONTENT1
+        +  dis_froz_max = CONTENT2
+        + a template run.sh of wannier90.x
+        + data file from VASP projection: wannier90.{amn,eig,mmn}
+        + wannier plot code from fanbs
+        + BAND.dat, KLABELS
 
 
 ## The postprocess part (postprocess/)
