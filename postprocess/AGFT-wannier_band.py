@@ -11,6 +11,13 @@ Description: This python code is designed for construction the Hamiltonian
                 - wannier band.png
 '''
 
+'''
+functionalized by Ting BAO 2022/11/22
+Now all can be import as module
+AGFT: Atomic guage Fourier Transformation
+'''    
+
+
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,7 +25,7 @@ from matplotlib.pyplot import MultipleLocator  # 从pyplot导入MultipleLocator�
 
 
 class WannierBand():
-    def __init__(self, lines, num_wan, nrpts, n, name, lv, K_point_path, K_label, kn, E_fermi, ymin, ymax):
+    def __init__(self, lines, num_wan, nrpts, n, name, lv, K_point_path, K_label, kn, E_fermi, ymin, ymax, source):
         self.lines = lines
         self.num_wan = num_wan
         self.nrpts = nrpts
@@ -31,6 +38,7 @@ class WannierBand():
         self.E_fermi = E_fermi
         self.ymin = ymin
         self.ymax = ymax
+        self.source = source
 
     # 根据实空间基矢获取倒格矢
     def reciprocal(self):
@@ -89,7 +97,7 @@ class WannierBand():
                 for jr in range(1 + (self.nrpts - 1) % 15):
                     Degen[:, (ir - 3) * 15 + jr, :] = self.lines[ir].split()[jr]
         # 读取wannier90_centres.xyz文件 采用AGFT
-        with open("wannier90_centres.xyz", "r") as fw:
+        with open(self.source+"wannier90_centres.xyz", "r") as fw:
             lines = fw.readlines()
             for i in range(self.num_wan):
                 for j in range(self.num_wan):
@@ -141,14 +149,14 @@ class WannierBand():
 
         plt.plot([0, self.k_length[self.n * self.kn - 1]], [0, 0], color='black', linestyle='--')
         plt.grid(axis='x', c='r', linestyle='--')
-        plt.savefig('wannier band of {}.jpg'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.0)  # bbox…去掉图外边框
+        plt.savefig(self.source+'AGFT wannier band of {}.jpg'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.0)  # bbox…去掉图外边框
         plt.show()
 
 
-def main():
+def AGFT(source='./', name='example'):
     begin = time.time()
     # 读取wannier90_hr.dat文件
-    with open("wannier90_hr.dat", "r") as fw:
+    with open(source+"wannier90_hr.dat", "r") as fw:
         lines = fw.readlines()
         # 获取投影的wannier band
         num_wan = int(lines[1].strip().split()[0])
@@ -156,17 +164,17 @@ def main():
         nrpts = int(lines[2].strip().split()[0])
         fw.close()
     # 根据POSCAR，获取实空间基矢
-    with open("POSCAR", "r") as fp:
+    with open(source+"POSCAR", "r") as fp:
         lines_p = fp.readlines()
         # 获取体系名称
-        name = lines_p[0].strip()
+        #name = lines_p[0].strip()
         lv = []
         for i in range(2, 5):
             lv.append((np.array(list(map(float, lines_p[i].strip().split()))) * float(
                 lines_p[1].strip().split()[0])).tolist())
         fp.close()
     # 根据KPOINTS，获取能带在K空间高对称点所取路径
-    with open("KPOINTS", "r") as fk:
+    with open(source+"KPOINTS", "r") as fk:
         K_point_path = []
         K_label = []
         lines_k = fk.readlines()
@@ -198,7 +206,8 @@ def main():
     E_fermi = -2.4239
     ymin = -5
     ymax = 5
-    kernel = WannierBand(lines, num_wan, nrpts, n, '3-3', lv, K_point_path, K_label, kn, E_fermi, ymin, ymax)
+    kernel = WannierBand(lines=lines, num_wan=num_wan, nrpts=nrpts, n=n, name=name, lv=lv, \
+        K_point_path=K_point_path, K_label=K_label, kn=kn, E_fermi=E_fermi, ymin=ymin, ymax=ymax, source=source)
     kernel.reciprocal()
     kernel.k_path()
     kernel.length()
@@ -208,4 +217,4 @@ def main():
 
 
 if __name__ == '__main__':  # 如果是当前文件直接运行，执行main()函数中的内容；如果是import当前文件，则不执行。
-    main()
+    AGFT(source='example-3-3/',name='3-3')

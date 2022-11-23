@@ -25,7 +25,7 @@ This part aims to get the band structure from the wannierized model and add the 
 
 
 ## TODO list
-+ functionalize the postprocess code (Benshu FAN)
++ functionalize the postprocess code (Ting BAO finished!)
 + add the Berry Phase related part:
     + Calculate the Berry curvatrue using Wilson Loop/Normal Berry curvature formula
     + Calculate the mag-related parameter, $\chi(\phi)$ 
