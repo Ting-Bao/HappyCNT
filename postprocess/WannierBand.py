@@ -292,7 +292,7 @@ class WannierBand():
         ax.set_ylabel(r"$E - E_{fermi}$"' (eV)')
         plt.ylim([self.ymin, self.ymax])
 
-        plt.savefig('wannier band of {}'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.0)  # bbox…去掉图外边框
+        plt.savefig(self.source+'Mag band of {}'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.0)  # bbox…去掉图外边框
         #plt.show()
 
 def AGFT(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5):
