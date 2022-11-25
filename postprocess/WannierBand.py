@@ -1,8 +1,11 @@
 '''
 Benshu Fan 2021/5/31
+Ting Bao 2022/11/22
 Wannier band of a material
 Description: This python code is designed for construction the Hamiltonian
                 and plot the band structure use the vasp wannier90_hr.dat file.
+             Additionally, the code can be used to deal with the 1D system adding magnetic flux
+                and get the Hamiltonian matrix based on kz and phi
               ::Input File::
                 - wannier90_hr.dat
                 - wannier90_centres.xyz
@@ -12,11 +15,6 @@ Description: This python code is designed for construction the Hamiltonian
                 - wannier band.png
 '''
 
-'''
-functionalized by Ting BAO 2022/11/22
-Now all can be import as module
-AGFT: Atomic guage Fourier Transformation
-'''    
 
 import time
 import numpy as np
@@ -25,7 +23,7 @@ from matplotlib.pyplot import MultipleLocator  # 从pyplot导入MultipleLocator�
 
 
 class WannierBand():
-    def __init__(self,  name, E_fermi, ymin, ymax, source, CNT_r = 1):
+    def __init__(self,  name, E_fermi, ymin, ymax, source, CNT_r = None):
         self.E_fermi = E_fermi  # 费米能
         self.ymin = ymin  # y轴坐标下限
         self.ymax = ymax
@@ -115,7 +113,7 @@ class WannierBand():
                                                                          self.kn)
 
     # 依照K空间路径构建作图步长，“步长”指的是沿着k空间高对称路径走过的长度
-    def length(self):
+    def band_length(self):
         k_length = [0]
         for i in range(self.n * self.kn - 1):
             if i < (self.n - 1) * self.kn:
@@ -199,13 +197,12 @@ class WannierBand():
 
         plt.plot([0, self.k_length[self.n * self.kn - 1]], [0, 0], color='black', linestyle='--')
         plt.grid(axis='x', c='r', linestyle='--')
-        plt.savefig(self.source+'AGFT wannier band of {}.jpg'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.0)  # bbox…去掉图外边框
+        plt.savefig(self.source+'AGFT wannier band of {}.jpg'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.2)  # bbox…去掉图外边框
         #plt.show()
 
     def mag_matrix_element(self):
         rhplanck = 1.054571817E-34 # reduced Planck constant
         e = 1.6E-19
-        
         ###
         self.B = np.array(np.linspace(0, 15E4, 3000),dtype=np.float64) / (rhplanck / e)  # 磁场强度，单位特斯拉
         ###
@@ -247,8 +244,8 @@ class WannierBand():
                     R_avg=self.CNT_r
                     theta = np.arccos(round(np.dot(R1, R2) / (np.linalg.norm(R1) * np.linalg.norm(R2)), 8))
                     S[i, j] = 1E-20 * sgn * theta * (R_avg ** 2) / 2 #use meters as unit, adjust for the sign problem
+                    # 记录ij间考虑符号的面积
 
-        
         # x 用于判断wannier90_hr.dat中第几行开始有矩阵元
         if self.nrpts % 15 == 0:
             x = self.nrpts // 15 + 3
@@ -271,11 +268,9 @@ class WannierBand():
             1j * (wan_centre[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
             1j * S[None, None, None, ...] * self.B[:, None, None, None, None])) * h[None, -1, ...]) / Degen[
                  None, -1, ...]).sum(axis=2)
-        H = (np.exp(1j * (R[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
-            1j * (wan_centre[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
-            1j * S[None, None, None, ...] * self.B[:, None, None, None, None])) * h[None, -1, ...]) / Degen[
-                 None, -1, ...]).sum(axis=2)
+
         H = H.sum(axis=1)
+        
         self.mag_H = H
 
 
@@ -285,14 +280,14 @@ class WannierBand():
         dim = self.eigenvalue_k.shape[-1]
         fig, ax = plt.subplots()
         for dim0 in range(dim):
-            plt.plot(self.B[0:len(self.B)], self.eigenvalue_k[:, dim0])
+            plt.plot((1e-20*np.pi*self.CNT_r**2)*self.B[0:len(self.B)], self.eigenvalue_k[:, dim0])
 
-        ax.set_title('Wannier band of {}'.format(self.name))
-        ax.set_xlabel("mag flux  "r"$\vec{\phi}$")
+        ax.set_title('Wannier band of {} vs mag flux'.format(self.name))
+        ax.set_xlabel("magnetic strength B  "r"$B$")
         ax.set_ylabel(r"$E - E_{fermi}$"' (eV)')
         plt.ylim([self.ymin, self.ymax])
 
-        plt.savefig(self.source+'Mag band of {}'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.0)  # bbox…去掉图外边框
+        plt.savefig(self.source+'Mag band of {}'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.2)  # bbox…去掉图外边框
         #plt.show()
 
 def AGFT(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5):
@@ -301,7 +296,7 @@ def AGFT(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5):
     kernel = WannierBand(name=name, E_fermi=E_fermi, ymin=ymin, ymax=ymax, source=source)
     kernel.reciprocal()
     kernel.k_path()
-    kernel.length()
+    kernel.band_length()
     kernel.matrix_element()
     print('time:', time.time() - begin)
     kernel.plot()
@@ -311,7 +306,7 @@ def mag_band(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5, CNT
     kernel = WannierBand(name=name, E_fermi=E_fermi, ymin=ymin, ymax=ymax, source=source, CNT_r=CNT_r)
     kernel.reciprocal()
     kernel.k_path()
-    kernel.length()
+    #kernel.length()
     kernel.mag_matrix_element()
     print('time:', time.time() - begin)
     kernel.mag_plot()
