@@ -29,8 +29,9 @@ class WannierBand():
         self.ymax = ymax
         self.name = name
         self.source = source
-        self.get_parameters()
         self.CNT_r=CNT_r  # CNT的半径，用于计算加入磁通时候的截面面积, Unit:Ang
+        self.get_parameters()
+        self.reciprocal()
 
     def get_parameters(self):
         # 读取wannier90_hr.dat文件
@@ -98,7 +99,7 @@ class WannierBand():
 
     # 构建K空间能带作图路径
     # 这里K空间路径越长，撒点越多，能带图越真实，注意endpoint=False的使用，避免重复计数与赋值
-    def k_path(self):
+    def k_path(self): #self.k 指的是kpath的路径
         self.k = np.zeros((self.n * self.kn, 3), dtype=np.float16)
         for i in range(len(self.K_point_path)):
             self.K_point_path[i] = self.K_point_path[i][0] * self.rec[0] + self.K_point_path[i][1] * self.rec[1] + \
@@ -200,7 +201,20 @@ class WannierBand():
         plt.savefig(self.source+'AGFT wannier band of {}.jpg'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.2)  # bbox…去掉图外边框
         #plt.show()
 
-    def mag_matrix_element(self):
+    def mag_matrix_element(self, kz = 0.0, coo='fractional'):
+        '''
+        take (0,0,kz) in in the k space, default kz is in the fractional coo
+        '''
+        if coo=='cartesian':
+            kz_car=kz
+        elif coo=='fractional':
+            kz_car=kz*self.rec[-1][-1]
+        else:
+            raise AttributeError()
+
+        kz_car=np.array([0,0,kz_car])
+
+
         rhplanck = 1.054571817E-34 # reduced Planck constant
         e = 1.6E-19
         ###
@@ -263,8 +277,13 @@ class WannierBand():
             R[:, m, ...] = float(self.lines[x + m * (self.num_wan ** 2)].split()[0]) * np.array(self.lv[0]) + float(
                 self.lines[x + m * (self.num_wan ** 2)].split()[1]) * np.array(self.lv[1]) + float(
                 self.lines[x + m * (self.num_wan ** 2)].split()[2]) * np.array(self.lv[2])
-        
+        '''
         H = (np.exp(1j * (R[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
+            1j * (wan_centre[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
+            1j * S[None, None, None, ...] * self.B[:, None, None, None, None])) * h[None, -1, ...]) / Degen[
+                 None, -1, ...]).sum(axis=2)
+        '''
+        H = (np.exp(1j * (R[None, -1, ...] * kz_car[None, None, None, None, None, :]).sum(axis=-1)) * (np.exp(
             1j * (wan_centre[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
             1j * S[None, None, None, ...] * self.B[:, None, None, None, None])) * h[None, -1, ...]) / Degen[
                  None, -1, ...]).sum(axis=2)
@@ -294,7 +313,6 @@ def AGFT(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5):
     # 从自洽步获取费米能，grep fermi OUTCAR
     begin = time.time()
     kernel = WannierBand(name=name, E_fermi=E_fermi, ymin=ymin, ymax=ymax, source=source)
-    kernel.reciprocal()
     kernel.k_path()
     kernel.band_length()
     kernel.matrix_element()
@@ -304,7 +322,6 @@ def AGFT(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5):
 def mag_band(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5, CNT_r=1.0):
     begin = time.time()
     kernel = WannierBand(name=name, E_fermi=E_fermi, ymin=ymin, ymax=ymax, source=source, CNT_r=CNT_r)
-    kernel.reciprocal()
     kernel.k_path()
     #kernel.length()
     kernel.mag_matrix_element()
