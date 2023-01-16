@@ -20,7 +20,10 @@ import scipy.constants as cst
 import time
 import numpy as np
 import scipy
+import matplotlib as mpl
+mpl.use('TkAgg')
 import matplotlib.pyplot as plt
+from matplotlib import cm
 from matplotlib.pyplot import MultipleLocator  # 从pyplot导入MultipleLocator类，这个类用于设置刻度间隔
 
 
@@ -46,7 +49,7 @@ class WannierBand():
             num_wan = int(lines[1].strip().split()[0])
             # 获取the number of Wigner-Seitz grid-points
             nrpts = int(lines[2].strip().split()[0])
-            fw.close()
+
         # 根据POSCAR，获取实空间基矢
         with open(self.source+"POSCAR", "r") as fp:
             lines_p = fp.readlines()
@@ -56,19 +59,21 @@ class WannierBand():
             for i in range(2, 5):
                 lv.append((np.array(list(map(float, lines_p[i].strip().split()))) * float(
                     lines_p[1].strip().split()[0])).tolist())
-            fp.close()
+
         # 根据KPOINTS，获取能带在K空间高对称点所取路径
         with open(self.source+"KPOINTS", "r") as fk:
             K_point_path = []
             K_label = []
             lines_k = fk.readlines()
             K_list = []
-            for i in range(len(lines_k)):
+            for i in range(len(lines_k)):#this is by fbs
                 if len(lines_k[i].strip().split()) == 0:
                     continue
                 else:
                     K_list.append(lines_k[i].strip().split())
-            fk.close()
+            kn=int(lines_k[1].strip()) # 每个高对称线撒点个数
+            # print(kn,type(kn))
+
         for i in range(4, len(K_list), 2):
             if i != len(K_list) - 2:
                 K_point_path.append(list(map(float, K_list[i][0:-1])))
@@ -84,8 +89,7 @@ class WannierBand():
 
         # 获取高对称线个数
         n = len(K_point_path) - 1
-        # 每个高对称线撒点个数
-        kn = 100
+
         self.lv = lv  # lattice vector
         self.K_point_path = K_point_path   #高对称点坐标的列表
         self.K_label = K_label  #高对称点符号的列表
@@ -190,6 +194,7 @@ class WannierBand():
             axis=1)
         self.H = H
 
+
     def plot(self):
         '''
         plot the band along k path
@@ -236,7 +241,8 @@ class WannierBand():
         kz_car=np.array([0,0,kz_car])
 
         ###
-        self.B = np.array(np.linspace(0, 4*self.period_B, 3000),dtype=np.float64) / (cst.h / (2*cst.e))  # 磁场强度，单位特斯拉
+        self.B = np.array(np.linspace(0, 4*self.period_B, 3000),dtype=np.float64)
+        self.B_reduce=self.B / (cst.h / (2*cst.e))
         ###
         #               k路径撒点数量      实空间矩阵数   wannier基数   wannier基数
         h = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan), dtype=np.complex128)
@@ -298,7 +304,7 @@ class WannierBand():
         '''
         H = (np.exp(1j * (R[None, -1, ...] * kz_car[None, None, None, None, None, :]).sum(axis=-1)) * (np.exp(
             1j * (wan_centre[None, -1, ...] * kz_car[None, None, None, None, None, :]).sum(axis=-1)) * (np.exp(
-            1j * S[None, None, None, ...] * self.B[:, None, None, None, None])) * h[None, -1, ...]) / Degen[
+            1j * S[None, None, None, ...] * self.B_reduce[:, None, None, None, None])) * h[None, -1, ...]) / Degen[
                  None, -1, ...]).sum(axis=2)
 
         H = H.sum(axis=1)
@@ -316,15 +322,15 @@ class WannierBand():
         dim = self.eigenvalue_k.shape[-1]
         fig, ax = plt.subplots()
         for dim0 in range(dim):
-            plt.plot(self.B, self.eigenvalue_k[:, dim0])
+            plt.plot(self.B_reduce, self.eigenvalue_k[:, dim0])
 
         ax.set_title('Wannier band of {} vs mag flux'.format(self.name))
-        ax.set_xlabel("magnetic strength B  "r"$B$")
+        ax.set_xlabel(r"magnetic strength $B$")
         ax.set_ylabel(r"$E - E_{fermi}$"' (eV)')
         plt.ylim([self.ymin, self.ymax])
-
         plt.savefig(self.source+'Mag band of {} at kz= {:.2f}.png'.format(self.name,self.mag_H_kz), bbox_inches='tight', dpi=600, pad_inches=0.2)  # bbox…去掉图外边框
         #plt.show()
+        plt.close()
 
     def get_boundary(self):
         '''
@@ -337,19 +343,20 @@ class WannierBand():
         self.period_B = unitphi/(cst.pi*(self.CNT_r*1e-10)**2)
         print("period kz and B is {} and {} respectively.".format(self.period_kz,self.period_B))
     
-    def get_full_matrix(self, kz_mesh=200, phi_mesh=200, method='loop'):
+    def get_full_matrix(self, kz_mesh=100, phi_mesh=100):
         '''
         Get the full matrix H(kz,phi)
         kz_mesh, phi_mesh defines the number of mesh grids.
-        method:     loop use the for loop
-                    broadcast use the broadcast: faster but larger RAM consumption
         '''
 
+        self.kz_mesh = kz_mesh
+        self.phi_mesh = phi_mesh
         if not hasattr(self, 'period_kz'):
             self.get_boundary()
 
         ### mesh
-        self.B = np.array(np.linspace(0, self.period_B, phi_mesh),dtype=np.float64) / (cst.h / (2*cst.e))  # 磁场强度，单位特斯拉
+        self.B = np.array(np.linspace(0, self.period_B, phi_mesh),dtype=np.float64) # 磁场强度，单位特斯拉
+        self.B_reduce=self.B / (cst.h / (2*cst.e))
         self.kz = np.array([[0,0,i]for i in np.array(np.linspace(0, self.period_kz, kz_mesh),dtype=np.float64)])
         ###
 
@@ -405,18 +412,94 @@ class WannierBand():
             R[:, m, ...] = float(self.lines[x + m * (self.num_wan ** 2)].split()[0]) * np.array(self.lv[0]) + float(
                 self.lines[x + m * (self.num_wan ** 2)].split()[1]) * np.array(self.lv[1]) + float(
                 self.lines[x + m * (self.num_wan ** 2)].split()[2]) * np.array(self.lv[2])
-        
-        H = (np.exp(1j * (R[None,None, -1, ...] * self.kz[:,None, None, None, None, None, :]).sum(axis=-1)) * (np.exp(
-            1j * (wan_centre[None,None, -1, ...] * self.kz[:, None,None, None, None, None, :]).sum(axis=-1)) * (np.exp(
-            1j * S[None, None, None, None, ...] * self.B[None, :, None, None, None, None])) * h[None,None, -1, ...]) / Degen[
-            None, None, -1, ...]).sum(axis=2)
+                
+        '''
+        对于下面的tensor，扩充维度后前两个维度axis是固定不动的phimesh和kzmesh
+        R,h,wan_center中因为历史遗留问题被扩充到了band的k点数量，是不必要的，这一维度被指定0而去除
+        '''
 
-        H = H.sum(axis=2)
+        # 以下都提早进行了过度广播，浪费内存，有空可以优化
+
+        H1 = np.exp(1j * (R[None,None, 0, ...] * self.kz[None, :, None, None, None, None, :]).sum(axis=-1))
+        # 广播扩维后shape(1,kmesh,1, 实空间矩阵数量nrpts，1 ，1， 3)， 最后一维对应三个方向被sum掉了。
+        # H1.shape() = (1,kmesh,1, 实空间矩阵数量nrpts，1 ，1)
         
+        H2 = np.exp(1j * (wan_centre[None,None, 0, ...] * self.kz[None, :,None, None, None, None, :]).sum(axis=-1)) \
+        # 广播扩维后shape(1,kmesh,1, 实空间矩阵数量nrpts，num_wan ，num_wan， 3)， 最后一维对应三个方向被sum掉了。
+        # H2.shape() = (1,kmesh,1, 实空间矩阵数量nrpts，num_wan ，num_wan)
+
+        H3 = np.exp(1j * S[None, None, None, None, ...] * self.B_reduce[:, None, None, None, None, None]) * h[None,None, 0, ...]/ Degen[None, None, 0, ...]
+        # 广播扩维后shape(phimesh,1,1, 实空间矩阵数量nrpts，num_wan ，num_wan)
+        # H3.shape() = (phimesh,1,1, 实空间矩阵数量nrpts，num_wan ，num_wan)
+
+        H=(H1*H2*H3).sum(axis=2)
+        # 广播扩维后shape(phimesh, kmesh, 1, 实空间矩阵数量nrpts，num_wan ，num_wan)
+        # 求和后 H.shape()= (phimesh, kmesh, 实空间矩阵数量nrpts，num_wan ，num_wan)
+
+        del H1,H2,H3
+        '''
+        Htemp = (np.exp(1j * (R[None,None, -1, ...] * self.kz[:,None, None, None, None, None, :]).sum(axis=-1)) * (np.exp(
+            1j * (wan_centre[None,None, -1, ...] * self.kz[:, None,None, None, None, None, :]).sum(axis=-1)) * (np.exp(
+            1j * S[None, None, None, None, ...] * self.B_reduce[None, :, None, None, None, None])) * h[None,None, -1, ...]) / Degen[
+            None, None, -1, ...]).sum(axis=2)
+        print(np.allclose(Htemp,H))
+        '''
+        H = H.sum(axis=2) # 关于实空间晶格矢求和
+        
+        print(np.allclose(H[:,0,...],H[:,12,...]))
+        print(np.allclose(H[:,33,...],H[:,99,...]))
+        print(np.allclose(H[0,...],H[1,...]))
+
         self.full_H = H
+
+    def full_H_plot(self, show=False, plot_max=3, plot_min=-3):
+        '''
+        To avoid confused with mag_H part, run 'get_full_matrix' before this function
+        plot the "band structure"
+        this is a 3D contour
+        '''
+        eigenvalue, _ = np.linalg.eigh(self.full_H)
+        self.eigenvalue_full = np.sort(eigenvalue) - self.E_fermi
+        '''
+        The eigenvalue_full is in the shape (phi_mesh, kz_mesh, num_wan)
+        '''
+        B,kz = np.meshgrid(self.B,self.kz[:,-1],indexing='ij') # self.kz is in shape (kzmesh, 3)
+        temp=self.kz[:,-1]
+        print (self.kz[:,-1])
+        ## plot 3D fig and save
+        fig = plt.figure()
+        fig.set_size_inches(5, 6)
+        ax = fig.add_subplot(projection='3d')
+
+        # manually cut off the data out of range
+        
+        eigenvalue_full_cut=self.eigenvalue_full
+        eigenvalue_full_cut[(eigenvalue_full_cut>plot_max)|(eigenvalue_full_cut<plot_min)]=None
+        '''
+        print(np.allclose(H[:,0,:],H[:,12,:]))
+        print(np.allclose(H[:,33,:],H[:,99,:]))
+        print(np.allclose(H[0,,:],H[1,,:]))
+        '''
+        for i in range(self.num_wan):
+            im=ax.plot_surface(B, kz, eigenvalue_full_cut[...,i], cmap=cm.nipy_spectral, vmin= plot_min,vmax = plot_max,linewidth=0, antialiased=False)
+        
+        ax.set_zlim(plot_min, plot_max)
+        fig.colorbar(im, location='left', extend='both', aspect=50, pad=0.01,shrink =0.5,label='Eigen Energy Ek')
+        plt.xlabel(r'$B/T$')
+        plt.ylabel(r'$k_z$')
+        temp='temp'
+        plt.title(temp)
+        plt.savefig('./temp.jpg',dpi=800)
+        if show==True:
+            plt.show()
+        input('hh')
+
 
 
 def AGFT(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5):
+    '''
+    func AGFT reproduce the band structure from the Wannier model
+    '''
     # 从自洽步获取费米能，grep fermi OUTCAR
     begin = time.time()
     kernel = WannierBand(name=name, E_fermi=E_fermi, ymin=ymin, ymax=ymax, source=source)
@@ -426,21 +509,36 @@ def AGFT(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5):
     print('time:', time.time() - begin)
     kernel.plot()
 
-def mag_band(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5, CNT_r=1.0):
+def mag_band(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5, CNT_r=1.0, kz = 0.0, coo='cartesian'):
+    '''
+    func mag_band reproduce the band structure at the specific kz point
+    '''
     begin = time.time()
     kernel = WannierBand(name=name, E_fermi=E_fermi, ymin=ymin, ymax=ymax, source=source, CNT_r=CNT_r)
-    #kernel.k_path()
-    #kernel.length()
     kernel.get_boundary()
-    kernel.mag_matrix_element(kz=0.0)
+    kernel.mag_matrix_element(kz = kz, coo=coo)
     print('time:', time.time() - begin)
     kernel.mag_plot()
 
-def full_hamiltonian(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5, CNT_r=1.0):
+def full_hamiltonian(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5, CNT_r=1.0, to_file = False):
+    '''
+    get the full hamiltonian H(k, phi), take the full hamiltonian as the return
+    '''
     kernel = WannierBand(name=name, E_fermi=E_fermi, ymin=ymin, ymax=ymax, source=source, CNT_r=CNT_r)
-    kernel.get_full_matrix()
+    kernel.get_full_matrix(kz_mesh=123)
+    kernel.full_H_plot(show=True)
+
+    if to_file==True:
+        # https://blog.csdn.net/mr_songw/article/details/124222383
+        np.save(source+'full_H',kernel.full_H)
+    
+    # read the stored full_H
+    # full_H = np.load(source+'full_H.npy')
+
+
+
 
 if __name__ == '__main__':  # 如果是当前文件直接运行，执行main()函数中的内容；如果是import当前文件，则不执行。
     # AGFT(source='work/example-3-3/',name='3-3',E_fermi=-2.4239)
-    # mag_band(source='work/example-3-3/',name='3-3',E_fermi=-2.4239, CNT_r=2.03)
+    # mag_band(source='work/example-3-3/',name='3-3',E_fermi=-2.4239, CNT_r=2.03, kz = 0.5, coo='fractional')
     full_hamiltonian(source='work/example-3-3/',name='3-3',E_fermi=-2.4239, CNT_r=2.03)

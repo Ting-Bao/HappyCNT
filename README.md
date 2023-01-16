@@ -1,6 +1,6 @@
 # HappyCNT
 
-Do happy Wannierization and postprocessing of Carbon NanoTube (CNT), Hybrid Organic-Inorganic Perovskit (HOIP), etc. The code is powered by Ting BAO and Benshu FAN.
+Do happy Wannierization and postprocessing of Carbon NanoTube (CNT), Hybrid Organic-Inorganic Perovskit (HOIP), etc. The code is powered by Ting BAO with great help from Benshu FAN (Wannier model IO and rebuild).
 
 ## wannier scan part (CNT_wannierhelper/)
 This part is to scan the inner window of the wannierization.
