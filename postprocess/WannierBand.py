@@ -15,9 +15,11 @@ Description: This python code is designed for construction the Hamiltonian
                 - wannier band.png
 '''
 
-
+#%%
+import scipy.constants as cst
 import time
 import numpy as np
+import scipy
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import MultipleLocator  # 从pyplot导入MultipleLocator类，这个类用于设置刻度间隔
 
@@ -29,11 +31,14 @@ class WannierBand():
         self.ymax = ymax
         self.name = name
         self.source = source
-        self.CNT_r=CNT_r  # CNT的半径，用于计算加入磁通时候的截面面积, Unit:Ang
+        self.CNT_r=CNT_r  # CNT的半径，用于计算加入磁通时候的截面面积, Unit:1 Ang = 1e-10 m
         self.get_parameters()
         self.reciprocal()
 
     def get_parameters(self):
+        '''
+        read parameters from files 
+        '''
         # 读取wannier90_hr.dat文件
         with open(self.source+"wannier90_hr.dat", "r") as fw:
             lines = fw.readlines()
@@ -92,6 +97,9 @@ class WannierBand():
 
     # 根据实空间基矢获取倒格矢
     def reciprocal(self):
+        '''
+        get the reciprocal lattice vector
+        '''
         V = np.dot(self.lv[0], np.cross(self.lv[1], self.lv[2]))
         self.rec = [np.cross(self.lv[1], self.lv[2]) * 2 * np.pi / V,
                     np.cross(self.lv[2], self.lv[0]) * 2 * np.pi / V,
@@ -100,6 +108,9 @@ class WannierBand():
     # 构建K空间能带作图路径
     # 这里K空间路径越长，撒点越多，能带图越真实，注意endpoint=False的使用，避免重复计数与赋值
     def k_path(self): #self.k 指的是kpath的路径
+        '''
+        get the kpath for band calculation
+        '''
         self.k = np.zeros((self.n * self.kn, 3), dtype=np.float16)
         for i in range(len(self.K_point_path)):
             self.K_point_path[i] = self.K_point_path[i][0] * self.rec[0] + self.K_point_path[i][1] * self.rec[1] + \
@@ -115,6 +126,9 @@ class WannierBand():
 
     # 依照K空间路径构建作图步长，“步长”指的是沿着k空间高对称路径走过的长度
     def band_length(self):
+        '''
+        get the step length of kpath
+        '''
         k_length = [0]
         for i in range(self.n * self.kn - 1):
             if i < (self.n - 1) * self.kn:
@@ -134,6 +148,10 @@ class WannierBand():
         '''
 
     def matrix_element(self):
+        '''
+        generate the matrix and do the Fourier transformation
+        finally get the H(k)
+        '''
         h = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan), dtype=np.complex64)
         R = np.zeros((self.n * self.kn, self.nrpts, 1, 1, 3), dtype=np.float16)
         Degen = np.zeros((self.n * self.kn, self.nrpts, 1, 1), dtype=np.uint8)
@@ -173,6 +191,9 @@ class WannierBand():
         self.H = H
 
     def plot(self):
+        '''
+        plot the band along k path
+        '''
         eigenvalue, _ = np.linalg.eigh(self.H)
         self.eigenvalue_k = np.sort(eigenvalue) - self.E_fermi
         dim = self.eigenvalue_k.shape[-1]
@@ -214,11 +235,8 @@ class WannierBand():
 
         kz_car=np.array([0,0,kz_car])
 
-
-        rhplanck = 1.054571817E-34 # reduced Planck constant
-        e = 1.6E-19
         ###
-        self.B = np.array(np.linspace(0, 15E4, 3000),dtype=np.float64) / (rhplanck / e)  # 磁场强度，单位特斯拉
+        self.B = np.array(np.linspace(0, 4*self.period_B, 3000),dtype=np.float64) / (cst.h / (2*cst.e))  # 磁场强度，单位特斯拉
         ###
         #               k路径撒点数量      实空间矩阵数   wannier基数   wannier基数
         h = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan), dtype=np.complex128)
@@ -245,19 +263,14 @@ class WannierBand():
                 for j in range(self.num_wan):
                     R1 = np.array(list(map(float, lines[i + 2].strip().split()[1:4])))
                     R2 = np.array(list(map(float, lines[j + 2].strip().split()[1:4])))
-                    wan_centre[..., i, j, :] = (R1 - R2) # 把一个三维矢量，赋给了一个三阶张量
-                    #temp=wan_centre[..., i, j, :]
-                    #print(wan_centre.shape)
-                    #print(wan_centre[..., i, j, :].shape)
-                    #print(wan_centre[21,5, 0, 1, :])                                       
+                    wan_centre[..., i, j, :] = (R1 - R2) # 把一个三维矢量，赋给了一个三阶张量                                      
                     R1[-1] = 0.0
                     R2[-1] = 0.0
                     sgn = np.sign(np.cross(R1, R2)[-1])
 
-                    #R_avg = (np.linalg.norm(R1) + np.linalg.norm(R2)) / 2
                     R_avg=self.CNT_r
                     theta = np.arccos(round(np.dot(R1, R2) / (np.linalg.norm(R1) * np.linalg.norm(R2)), 8))
-                    S[i, j] = 1E-20 * sgn * theta * (R_avg ** 2) / 2 #use meters as unit, adjust for the sign problem
+                    S[i, j] = sgn * theta * ((1e-10 * R_avg) ** 2) / 2 #use meters as unit, adjust for the sign problem
                     # 记录ij间考虑符号的面积
 
         # x 用于判断wannier90_hr.dat中第几行开始有矩阵元
@@ -284,30 +297,124 @@ class WannierBand():
                  None, -1, ...]).sum(axis=2)
         '''
         H = (np.exp(1j * (R[None, -1, ...] * kz_car[None, None, None, None, None, :]).sum(axis=-1)) * (np.exp(
-            1j * (wan_centre[None, -1, ...] * self.k[None, -1, None, None, None, :]).sum(axis=-1)) * (np.exp(
+            1j * (wan_centre[None, -1, ...] * kz_car[None, None, None, None, None, :]).sum(axis=-1)) * (np.exp(
             1j * S[None, None, None, ...] * self.B[:, None, None, None, None])) * h[None, -1, ...]) / Degen[
                  None, -1, ...]).sum(axis=2)
 
         H = H.sum(axis=1)
         
         self.mag_H = H
+        self.mag_H_kz=kz_car[-1]
 
 
     def mag_plot(self):
+        '''
+        plot the band structure along mag flux phi at fix k point
+        '''
         eigenvalue, _ = np.linalg.eigh(self.mag_H)
         self.eigenvalue_k = np.sort(eigenvalue) - self.E_fermi
         dim = self.eigenvalue_k.shape[-1]
         fig, ax = plt.subplots()
         for dim0 in range(dim):
-            plt.plot((1e-20*np.pi*self.CNT_r**2)*self.B[0:len(self.B)], self.eigenvalue_k[:, dim0])
+            plt.plot(self.B, self.eigenvalue_k[:, dim0])
 
         ax.set_title('Wannier band of {} vs mag flux'.format(self.name))
         ax.set_xlabel("magnetic strength B  "r"$B$")
         ax.set_ylabel(r"$E - E_{fermi}$"' (eV)')
         plt.ylim([self.ymin, self.ymax])
 
-        plt.savefig(self.source+'Mag band of {}'.format(self.name), bbox_inches='tight', dpi=600, pad_inches=0.2)  # bbox…去掉图外边框
+        plt.savefig(self.source+'Mag band of {} at kz= {:.2f}.png'.format(self.name,self.mag_H_kz), bbox_inches='tight', dpi=600, pad_inches=0.2)  # bbox…去掉图外边框
         #plt.show()
+
+    def get_boundary(self):
+        '''
+        Get the peoriod of kz and mag strength B (and mag flux phi)
+        '''
+        #self.CNT_r
+        self.period_kz = self.rec[-1][-1]
+        unitphi= 2* cst.pi * cst.h / ( 2 * cst.e)
+        self.period_phi = unitphi
+        self.period_B = unitphi/(cst.pi*(self.CNT_r*1e-10)**2)
+        print("period kz and B is {} and {} respectively.".format(self.period_kz,self.period_B))
+    
+    def get_full_matrix(self, kz_mesh=200, phi_mesh=200, method='loop'):
+        '''
+        Get the full matrix H(kz,phi)
+        kz_mesh, phi_mesh defines the number of mesh grids.
+        method:     loop use the for loop
+                    broadcast use the broadcast: faster but larger RAM consumption
+        '''
+
+        if not hasattr(self, 'period_kz'):
+            self.get_boundary()
+
+        ### mesh
+        self.B = np.array(np.linspace(0, self.period_B, phi_mesh),dtype=np.float64) / (cst.h / (2*cst.e))  # 磁场强度，单位特斯拉
+        self.kz = np.array([[0,0,i]for i in np.array(np.linspace(0, self.period_kz, kz_mesh),dtype=np.float64)])
+        ###
+
+        #               k路径撒点数量      实空间矩阵数   wannier基数   wannier基数
+        h = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan), dtype=np.complex128)
+        R = np.zeros((self.n * self.kn, self.nrpts, 1, 1, 3), dtype=np.float32) 
+        Degen = np.zeros((self.n * self.kn, self.nrpts, 1, 1), dtype=np.int8) # 简并程度
+        wan_centre = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan, 3), dtype=np.float32)
+        S = np.zeros((self.num_wan, self.num_wan), dtype=np.float32)
+        # 读取the degeneracy of each Wigner-Seitz grid point
+        print(self.nrpts)
+
+        # mod 15 是因为记录wannier90_hr.dat中的第四行开始的记录简并度的行，一行最多有15个数字
+        for ir in range(3, 4 + (self.nrpts - 1) // 15):   # ir 判断了写简并度的行数有几行
+            if ir != 3 + (self.nrpts - 1) // 15:
+                for jr in range(15):
+                    Degen[:, (ir - 3) * 15 + jr, :] = self.lines[ir].split()[jr]
+            else:
+                for jr in range(1 + (self.nrpts - 1) % 15):
+                    Degen[:, (ir - 3) * 15 + jr, :] = self.lines[ir].split()[jr]
+        
+        # 读取wannier90_centres.xyz文件 采用AGFT
+        with open(self.source+"wannier90_centres.xyz", "r") as fw:
+            lines = fw.readlines()#self.lines 和 lines 是两个变量。。。
+            for i in range(self.num_wan):
+                for j in range(self.num_wan):
+                    R1 = np.array(list(map(float, lines[i + 2].strip().split()[1:4])))
+                    R2 = np.array(list(map(float, lines[j + 2].strip().split()[1:4])))
+                    wan_centre[..., i, j, :] = (R1 - R2) # 把一个三维矢量，赋给了一个三阶张量                                      
+                    R1[-1] = 0.0
+                    R2[-1] = 0.0
+                    sgn = np.sign(np.cross(R1, R2)[-1])
+
+                    R_avg=self.CNT_r
+                    theta = np.arccos(round(np.dot(R1, R2) / (np.linalg.norm(R1) * np.linalg.norm(R2)), 8))
+                    S[i, j] = sgn * theta * ((1e-10 * R_avg) ** 2) / 2 #use meters as unit, adjust for the sign problem
+                    # 记录ij间考虑符号的面积
+
+        # x 用于判断wannier90_hr.dat中第几行开始有矩阵元
+        if self.nrpts % 15 == 0:
+            x = self.nrpts // 15 + 3
+        else:
+            x = self.nrpts // 15 + 4
+        
+        # h 为实空间的哈密顿量矩阵
+        for i in range(x, len(self.lines)):
+            h[:, int(np.floor((i - x) / self.num_wan ** 2)), int(self.lines[i].split()[3]) - 1,
+            int(self.lines[i].split()[4]) - 1] = \
+                float(self.lines[i].split()[5]) + 1j * float(self.lines[i].split()[6])
+
+        # 每个实空间矩阵的对应的晶格矢量    
+        for m in range(self.nrpts):
+            R[:, m, ...] = float(self.lines[x + m * (self.num_wan ** 2)].split()[0]) * np.array(self.lv[0]) + float(
+                self.lines[x + m * (self.num_wan ** 2)].split()[1]) * np.array(self.lv[1]) + float(
+                self.lines[x + m * (self.num_wan ** 2)].split()[2]) * np.array(self.lv[2])
+        
+        H = (np.exp(1j * (R[None,None, -1, ...] * self.kz[:,None, None, None, None, None, :]).sum(axis=-1)) * (np.exp(
+            1j * (wan_centre[None,None, -1, ...] * self.kz[:, None,None, None, None, None, :]).sum(axis=-1)) * (np.exp(
+            1j * S[None, None, None, None, ...] * self.B[None, :, None, None, None, None])) * h[None,None, -1, ...]) / Degen[
+            None, None, -1, ...]).sum(axis=2)
+
+        H = H.sum(axis=2)
+        
+        self.full_H = H
+
 
 def AGFT(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5):
     # 从自洽步获取费米能，grep fermi OUTCAR
@@ -322,12 +429,18 @@ def AGFT(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5):
 def mag_band(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5, CNT_r=1.0):
     begin = time.time()
     kernel = WannierBand(name=name, E_fermi=E_fermi, ymin=ymin, ymax=ymax, source=source, CNT_r=CNT_r)
-    kernel.k_path()
+    #kernel.k_path()
     #kernel.length()
-    kernel.mag_matrix_element()
+    kernel.get_boundary()
+    kernel.mag_matrix_element(kz=0.0)
     print('time:', time.time() - begin)
     kernel.mag_plot()
 
+def full_hamiltonian(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax = 5, CNT_r=1.0):
+    kernel = WannierBand(name=name, E_fermi=E_fermi, ymin=ymin, ymax=ymax, source=source, CNT_r=CNT_r)
+    kernel.get_full_matrix()
+
 if __name__ == '__main__':  # 如果是当前文件直接运行，执行main()函数中的内容；如果是import当前文件，则不执行。
-    AGFT(source='work/example-3-3/',name='3-3',E_fermi=-2.4239)
-    mag_band(source='work/example-3-3/',name='3-3',E_fermi=-2.4239, CNT_r=2.03)
+    # AGFT(source='work/example-3-3/',name='3-3',E_fermi=-2.4239)
+    # mag_band(source='work/example-3-3/',name='3-3',E_fermi=-2.4239, CNT_r=2.03)
+    full_hamiltonian(source='work/example-3-3/',name='3-3',E_fermi=-2.4239, CNT_r=2.03)
