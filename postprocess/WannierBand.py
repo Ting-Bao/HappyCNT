@@ -21,7 +21,7 @@ import time
 import numpy as np
 import scipy
 import matplotlib as mpl
-mpl.use('TkAgg')
+mpl.use('QtAgg')
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.pyplot import MultipleLocator  # 从pyplot导入MultipleLocator类，这个类用于设置刻度间隔
@@ -367,7 +367,7 @@ class WannierBand():
         wan_centre = np.zeros((self.n * self.kn, self.nrpts, self.num_wan, self.num_wan, 3), dtype=np.float32)
         S = np.zeros((self.num_wan, self.num_wan), dtype=np.float32)
         # 读取the degeneracy of each Wigner-Seitz grid point
-        print(self.nrpts)
+        #print(self.nrpts)
 
         # mod 15 是因为记录wannier90_hr.dat中的第四行开始的记录简并度的行，一行最多有15个数字
         for ir in range(3, 4 + (self.nrpts - 1) // 15):   # ir 判断了写简并度的行数有几行
@@ -446,9 +446,9 @@ class WannierBand():
         '''
         H = H.sum(axis=2) # 关于实空间晶格矢求和
         
-        print(np.allclose(H[:,0,...],H[:,12,...]))
-        print(np.allclose(H[:,33,...],H[:,99,...]))
-        print(np.allclose(H[0,...],H[1,...]))
+        #print(np.allclose(H[:,0,...],H[:,12,...]))
+        #print(np.allclose(H[:,33,...],H[:,99,...]))
+        #print(np.allclose(H[0,...],H[1,...]))
 
         self.full_H = H
 
@@ -492,7 +492,7 @@ class WannierBand():
         plt.savefig('./temp.jpg',dpi=800)
         if show==True:
             plt.show()
-        input('hh')
+        input('type any key and enter to continue')
 
 
 

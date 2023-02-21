@@ -1,8 +1,6 @@
-#%%
-import numpy as np
-my_arr = np.random.random((4, 4))
-print(my_arr)
-my_arr[my_arr < 0.5]
-
-
-#%%
+# %%
+import matplotlib
+matplotlib.rcsetup.interactive_bk # 获取 interactive backend
+matplotlib.rcsetup.non_interactive_bk # 获取 non-interactive backend
+matplotlib.rcsetup.all_backends # 获取 所有 backend
+# %%
