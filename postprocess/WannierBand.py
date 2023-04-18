@@ -15,26 +15,25 @@ Description: This python code is designed for construction the Hamiltonian
                 - wannier band.png
 '''
 
-#%%
 import scipy.constants as cst
 import time
 import numpy as np
-import scipy
 import matplotlib as mpl
-mpl.use('QtAgg')
 import matplotlib.pyplot as plt
 from matplotlib import cm
-from matplotlib.pyplot import MultipleLocator  # 从pyplot导入MultipleLocator类，这个类用于设置刻度间隔
+# from matplotlib.pyplot import MultipleLocator 
+# 从pyplot导入MultipleLocator类，这个类用于设置刻度间隔
+mpl.use('QtAgg')
 
 
 class WannierBand():
-    def __init__(self,  name, E_fermi, ymin, ymax, source, CNT_r = None):
+    def __init__(self,  name, E_fermi, ymin, ymax, source, CNT_r=None):
         self.E_fermi = E_fermi  # 费米能
         self.ymin = ymin  # y轴坐标下限
         self.ymax = ymax
         self.name = name
         self.source = source
-        self.CNT_r=CNT_r  # CNT的半径，用于计算加入磁通时候的截面面积, Unit:1 Ang = 1e-10 m
+        self.CNT_r = CNT_r  # CNT的半径，用于计算加入磁通时候的截面面积, Unit:1 Ang = 1e-10 m
         self.get_parameters()
         self.reciprocal()
 
@@ -71,7 +70,7 @@ class WannierBand():
                     continue
                 else:
                     K_list.append(lines_k[i].strip().split())
-            kn=int(lines_k[1].strip()) # 每个高对称线撒点个数
+            kn = int(lines_k[1].strip()) # 每个高对称线撒点个数
             # print(kn,type(kn))
 
         for i in range(4, len(K_list), 2):
@@ -91,12 +90,12 @@ class WannierBand():
         n = len(K_point_path) - 1
 
         self.lv = lv  # lattice vector
-        self.K_point_path = K_point_path   #高对称点坐标的列表
-        self.K_label = K_label  #高对称点符号的列表
-        self.kn = kn  #每段高对称路径的撒点数量
+        self.K_point_path = K_point_path   # 高对称点坐标的列表
+        self.K_label = K_label  # 高对称点符号的列表
+        self.kn = kn  # 每段高对称路径的撒点数量
         self.lines = lines   # wannier90_hr.dat每行
         self.num_wan = num_wan    # wannier带的数目
-        self.nrpts = nrpts   #实空间截断矩阵的个数
+        self.nrpts = nrpts   # 实空间截断矩阵的个数
         self.n = n    # 高对称线的个数（段数），例如G-Z-A算作两段
 
     # 根据实空间基矢获取倒格矢
@@ -385,7 +384,7 @@ class WannierBand():
                 for j in range(self.num_wan):
                     R1 = np.array(list(map(float, lines[i + 2].strip().split()[1:4])))
                     R2 = np.array(list(map(float, lines[j + 2].strip().split()[1:4])))
-                    wan_centre[..., i, j, :] = (R1 - R2) # 把一个三维矢量，赋给了一个三阶张量                                      
+                    wan_centre[..., i, j, :] = (R1 - R2) # 把一个三维矢量，广播给了woj一个三阶张量                                      
                     R1[-1] = 0.0
                     R2[-1] = 0.0
                     sgn = np.sign(np.cross(R1, R2)[-1])
@@ -412,7 +411,7 @@ class WannierBand():
             R[:, m, ...] = float(self.lines[x + m * (self.num_wan ** 2)].split()[0]) * np.array(self.lv[0]) + float(
                 self.lines[x + m * (self.num_wan ** 2)].split()[1]) * np.array(self.lv[1]) + float(
                 self.lines[x + m * (self.num_wan ** 2)].split()[2]) * np.array(self.lv[2])
-                
+
         '''
         对于下面的tensor，扩充维度后前两个维度axis是固定不动的phimesh和kzmesh
         R,h,wan_center中因为历史遗留问题被扩充到了band的k点数量，是不必要的，这一维度被指定0而去除
@@ -435,8 +434,16 @@ class WannierBand():
         H=(H1*H2*H3).sum(axis=2)
         # 广播扩维后shape(phimesh, kmesh, 1, 实空间矩阵数量nrpts，num_wan ，num_wan)
         # 求和后 H.shape()= (phimesh, kmesh, 实空间矩阵数量nrpts，num_wan ，num_wan)
+        
+        H = H.sum(axis=2) # 关于实空间晶格矢求和
+        self.full_H = H
 
-        del H1,H2,H3
+        #H4=
+
+        # 这里把full Hamiltonian关于kz和phi求导的矩阵也存下来
+        self.full_H_dphi=1j * self.full_H
+        #self.full_H_dk=1j*
+
         '''
         Htemp = (np.exp(1j * (R[None,None, -1, ...] * self.kz[:,None, None, None, None, None, :]).sum(axis=-1)) * (np.exp(
             1j * (wan_centre[None,None, -1, ...] * self.kz[:, None,None, None, None, None, :]).sum(axis=-1)) * (np.exp(
@@ -444,13 +451,14 @@ class WannierBand():
             None, None, -1, ...]).sum(axis=2)
         print(np.allclose(Htemp,H))
         '''
-        H = H.sum(axis=2) # 关于实空间晶格矢求和
-        
         #print(np.allclose(H[:,0,...],H[:,12,...]))
         #print(np.allclose(H[:,33,...],H[:,99,...]))
         #print(np.allclose(H[0,...],H[1,...]))
+        
+        
+        
 
-        self.full_H = H
+        
 
     def full_H_plot(self, show=False, plot_max=3, plot_min=-3):
         '''
@@ -464,8 +472,8 @@ class WannierBand():
         The eigenvalue_full is in the shape (phi_mesh, kz_mesh, num_wan)
         '''
         B,kz = np.meshgrid(self.B,self.kz[:,-1],indexing='ij') # self.kz is in shape (kzmesh, 3)
-        temp=self.kz[:,-1]
-        print (self.kz[:,-1])
+        #temp=self.kz[:,-1]
+        #print (self.kz[:,-1])
         ## plot 3D fig and save
         fig = plt.figure()
         fig.set_size_inches(5, 6)
@@ -492,7 +500,7 @@ class WannierBand():
         plt.savefig('./temp.jpg',dpi=800)
         if show==True:
             plt.show()
-        input('type any key and enter to continue')
+        #input('type any key and enter to continue')
 
 
 
@@ -530,10 +538,9 @@ def full_hamiltonian(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax 
 
     if to_file==True:
         # https://blog.csdn.net/mr_songw/article/details/124222383
-        np.save(source+'full_H',kernel.full_H)
+        np.savez(source+'full_H',full_H=kernel.full_H, full_H_dk=kernel.full_H_dk, full_H_dphi=kernel.full_H_dphi)
     
-    # read the stored full_H
-    # full_H = np.load(source+'full_H.npy')
+    # read the stored full_H in Calculate_prop.py for further processing
 
 
 
@@ -541,4 +548,4 @@ def full_hamiltonian(source='./', name='example',E_fermi = 0.0, ymin = -5, ymax 
 if __name__ == '__main__':  # 如果是当前文件直接运行，执行main()函数中的内容；如果是import当前文件，则不执行。
     # AGFT(source='work/example-3-3/',name='3-3',E_fermi=-2.4239)
     # mag_band(source='work/example-3-3/',name='3-3',E_fermi=-2.4239, CNT_r=2.03, kz = 0.5, coo='fractional')
-    full_hamiltonian(source='work/example-3-3/',name='3-3',E_fermi=-2.4239, CNT_r=2.03)
+    full_hamiltonian(source='work/example-3-3/',name='3-3',E_fermi=-2.4239, CNT_r=2.03,to_file=True)
